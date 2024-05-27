@@ -1,18 +1,14 @@
-import {
-	Stack,
-	useGlobalSearchParams,
-	useLocalSearchParams,
-	useRouter,
-} from 'expo-router';
+import { Stack, useRouter, useSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
-	Text,
 	View,
+	Text,
 	SafeAreaView,
 	ScrollView,
 	ActivityIndicator,
 	RefreshControl,
 } from 'react-native';
+
 import {
 	Company,
 	JobAbout,
@@ -21,23 +17,27 @@ import {
 	ScreenHeaderBtn,
 	Specifics,
 } from '../../components';
-import { COLORS, SIZES, icons } from '../../constants';
+import { COLORS, icons, SIZES } from '../../constants';
 import useFetch from '../../hook/useFetch';
 
 const tabs = ['About', 'Qualifications', 'Responsibilities'];
-const [activeTab, setActiveTab] = useState(tabs[0]);
 
 const JobDetails = () => {
-	const params = useGlobalSearchParams();
+	const params = useSearchParams();
 	const router = useRouter();
 
-	const [refreshing, setRefreshing] = useState(false);
-
-	const onRefresh = () => {};
-
-	const { data, isLoading, error, refetch } = useFetch('job_details', {
+	const { data, isLoading, error, refetch } = useFetch('job-details', {
 		job_id: params.id,
 	});
+
+	const [activeTab, setActiveTab] = useState(tabs[0]);
+	const [refreshing, setRefreshing] = useState(false);
+
+	const onRefresh = useCallback(() => {
+		setRefreshing(true);
+		refetch();
+		setRefreshing(false);
+	}, []);
 
 	const displayTabContent = () => {
 		switch (activeTab) {
@@ -45,16 +45,25 @@ const JobDetails = () => {
 				return (
 					<Specifics
 						title='Qualifications'
-						points={data[0].job_highlights?.qualifications ?? ['N/A']}
+						points={data[0].job_highlights?.Qualifications ?? ['N/A']}
 					/>
 				);
-				break;
+
 			case 'About':
-				break;
+				return (
+					<JobAbout info={data[0].job_description ?? 'No data provided'} />
+				);
+
 			case 'Responsibilities':
-				break;
+				return (
+					<Specifics
+						title='Responsibilities'
+						points={data[0].job_highlights?.Responsibilities ?? ['N/A']}
+					/>
+				);
+
 			default:
-				break;
+				return null;
 		}
 	};
 
@@ -65,16 +74,16 @@ const JobDetails = () => {
 					headerStyle: { backgroundColor: COLORS.lightWhite },
 					headerShadowVisible: false,
 					headerBackVisible: false,
-					headerLeft: () => {
+					headerLeft: () => (
 						<ScreenHeaderBtn
 							iconUrl={icons.left}
 							dimension='60%'
 							handlePress={() => router.back()}
-						/>;
-					},
-					headerRight: () => {
-						<ScreenHeaderBtn iconUrl={icons.share} dimension='60%' />;
-					},
+						/>
+					),
+					headerRight: () => (
+						<ScreenHeaderBtn iconUrl={icons.share} dimension='60%' />
+					),
 					headerTitle: '',
 				}}
 			/>
@@ -83,10 +92,7 @@ const JobDetails = () => {
 				<ScrollView
 					showsVerticalScrollIndicator={false}
 					refreshControl={
-						<RefreshControl
-							refreshing={refreshing}
-							onRefresh={onRefresh}
-						></RefreshControl>
+						<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
 					}
 				>
 					{isLoading ? (
@@ -94,7 +100,7 @@ const JobDetails = () => {
 					) : error ? (
 						<Text>Something went wrong</Text>
 					) : data.length === 0 ? (
-						<Text>No data</Text>
+						<Text>No data available</Text>
 					) : (
 						<View style={{ padding: SIZES.medium, paddingBottom: 100 }}>
 							<Company
@@ -114,6 +120,13 @@ const JobDetails = () => {
 						</View>
 					)}
 				</ScrollView>
+
+				<JobFooter
+					url={
+						data[0]?.job_google_link ??
+						'https://careers.google.com/jobs/results/'
+					}
+				/>
 			</>
 		</SafeAreaView>
 	);
